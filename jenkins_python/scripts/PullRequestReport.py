@@ -5,6 +5,7 @@ from __future__ import print_function
 import glob
 import json
 import os
+import re
 import time
 import traceback
 from collections import defaultdict
@@ -19,6 +20,7 @@ pylintSummaryFile = 'pylintSummary.jinja'
 unitTestSummaryFile = 'unitTestReport.jinja'
 pyfutureSummaryFile = 'pyfutureSummary.jinja'
 pycodestyleReportFile = 'pycodestyle.jinja'
+CRABClientTestsReportFile = 'CRABClientFunctional.jinja'
 
 okWarnings = ['0511', '0703', '0613']
 
@@ -26,6 +28,36 @@ summaryMessage = ''
 longMessage = ''
 reportOn = {}
 failed = False
+
+
+def buildCRABClientReport(templateEnv):
+    CRABClientTestsTemplate = templateEnv.get_template(CRABClientTestsReportFile)
+    directory = 'CRABSubmitResults/*/*'
+
+    failed = False
+    testResult = []
+
+    def readBlocks(file):
+        block = ''
+        for line in file:
+            line = line.replace('\n', ' ')
+            if line.__contains__('TEST_COMMAND:') and len(block) > 0:
+                yield block
+                block = ''
+            block += line
+        yield block
+
+    for file in glob.iglob(directory):
+        with open(file, 'r') as reportFile:
+            for block in readBlocks(reportFile):
+                if block.__contains__("[FAILED]"):
+                    failed = True
+                results = dict(x.split(':', 1) for x in re.split('\s(?=TEST_)', block))
+                testResult.append(results)
+
+    functionalTestsHTML = CRABClientTestsTemplate.render({'testResult': testResult})
+
+    return failed, functionalTestsHTML
 
 
 def buildPylintReport(templateEnv):
@@ -242,6 +274,7 @@ except IOError:
     failedUnitTests, unitTestSummaryHTML, unitTestSummary = 0, '', ''
 failedPyFuture, pyfutureSummary, pyfutureSummaryHTML = buildPyFutureReport(templateEnv)
 failedPycodestyle, pycodestyleReport, pycodestyleSummary = buildPyCodeStyleReport(templateEnv)
+failedCRABClient, CRABClientSummaryHTML = buildCRABClientReport(templateEnv)
 
 with open('artifacts/PullRequestReport.html', 'w') as html:
     html.write(unitTestSummaryHTML)
@@ -252,6 +285,8 @@ with open('artifacts/PullRequestReport.html', 'w') as html:
     if pycodestyleReport:
         html.write(pycodestyleReport)
     html.write(pyfutureSummaryHTML)
+    if CRABClientSummaryHTML:
+        html.write(CRABClientSummaryHTML)    
 
 gh = Github(os.environ['DMWMBOT_TOKEN'])
 codeRepo = os.environ.get('CODE_REPO', 'WMCore')
@@ -314,6 +349,9 @@ if failedPyFuture:
     message += '   * fails python3 compatibility test\n '
 if 'idioms.patch' in pyfutureSummary and pyfutureSummary['idioms.patch']:
     message += '   * there are suggested fixes for newer python3 idioms\n '
+ 
+if CRABClientSummaryHTML:
+    message += ' * CRABClient functional tests:  %s\n' % statusMap[failedCRABClient]['readStatus']'
 
 message += "\nDetails at %s\n" % reportURL
 status = issue.create_comment(message)
@@ -329,6 +367,10 @@ lastCommit.create_status(state=statusMap[failedUnitTests]['ghStatus'], target_ur
 lastCommit.create_status(state=statusMap[failedPyFuture]['ghStatus'], target_url=reportURL + '#pyfuture',
                          description='Finished at ' + time.strftime("%d %b %Y %H:%M GMT"),
                          context='Python3 compatibility')
+if CRABClientSummaryHTML:
+    lastCommit.create_status(state=statusMap[failedCRABClient]['ghStatus'], target_url=reportURL + '#CRABClientTests',
+                         description='Finished at ' + time.strftime("%d %b %Y %H:%M GMT"),
+                         context='CRABClient functional tests')
 
 if failedPylint:
     print('Testing of python code. DMWM-FAIL-PYLINT')
@@ -349,3 +391,8 @@ if failedPyFuture:
     print('Testing of python code. DMWM-FAIL-PY27')
 else:
     print('Testing of python code. DMWM-SUCCEED-PY27')
+    
+if failedCRABClient:
+    print('Testing of python code. DMWM-FAIL-CRABClient')
+else:
+    print('Testing of python code. DMWM-SUCCEED-CRABClient')    

@@ -1,0 +1,41 @@
+<h1>Summary of CRABClient tests</h1>
+<h3>Test summary</h3>
+
+{% if testResult %}
+    <ul>
+        <li>Total tests executed: {{testResult|length}}</li>
+            <ul>
+                <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [  OK  ]')|list|length }} tests passed</li>
+                <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [FAILED]')|list|length }} tests failed</li>
+                <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [WARNING]')|list|length }} tests ended with warning</li>
+
+            </ul>
+    </ul>
+{% endif %}
+
+<h4>Link to the log file with executed commands output: TO BE ADDED</h4>
+
+{% if testResult|length != testResult|selectattr('TEST_RESULT', 'equalto', ' [  OK  ]')|list|length  %}
+    <h3>Failed tests details:</h3>
+          {% for task in testResult if task.TEST_RESULT != ' [  OK  ]' %}
+             {%- if task.TEST_RESULT == ' [FAILED]' %}
+                <b>
+             {%- endif %}
+                <ul>
+                    <li>{{task.TEST_COMMAND}}: {{task.TEST_RESULT}} </li>
+                      <ul>
+                        <li>{{task.TEST_MESSAGE}}</li>
+                      </ul>
+                </ul>
+             {%- if task.TEST_RESULT == ' [FAILED]' %}
+                </b>
+             {%- endif %}
+          {% endfor %}
+{% endif %}
+
+<h3>List of tests executed:</h3>
+{% for task in testResult %}
+    <ul>
+        <li>{{task.TEST_COMMAND}}</li>
+    </ul>
+{% endfor %}
