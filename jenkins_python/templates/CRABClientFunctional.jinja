@@ -2,16 +2,16 @@
 <h3>Test summary</h3>
 
 {% if testResult %}
-<ul>
-    <li>Total tests executed: {{testResult|length}}</li>
-        <ul>
-            <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [  OK  ]')|list|length }} tests passed</li>
-            <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [FAILED]')|list|length }} tests failed</li>
-            <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [WARNING]')|list|length }} tests ended with warning</li>
+    <ul>
+        <li>Total tests executed: {{testResult|length}}</li>
+            <ul>
+                <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [  OK  ]')|list|length }} tests passed</li>
+                <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [FAILED]')|list|length }} tests failed</li>
+                <li>{{ testResult|selectattr('TEST_RESULT', 'equalto', ' [WARNING]')|list|length }} tests ended with warning</li>
 
-        </ul>
-    {% endif %}
-</ul>
+            </ul>
+    </ul>
+{% endif %}
 
 <h4>Link to the log file with executed commands output: TO BE ADDED</h4>
 
@@ -34,13 +34,8 @@
 {% endif %}
 
 <h3>List of tests executed:</h3>
-    {% for task in testResult %}
-        <ul>
-            <li>{{task.TEST_COMMAND}}</li>
-        </ul>
-    {% endfor %}
-
-
-
-
-
+{% for task in testResult %}
+    <ul>
+        <li>{{task.TEST_COMMAND}}</li>
+    </ul>
+{% endfor %}
